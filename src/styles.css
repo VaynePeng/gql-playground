@@ -1711,19 +1711,20 @@ kbd {
   display: flex;
   flex-direction: column;
 }
-.variables-pane {
-  height: 138px;
-  min-height: 92px;
+.call-pane {
+  height: 108px;
+  min-height: 80px;
   flex-shrink: 0;
   border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   background: var(--editor);
 }
-.variables-toolbar {
+.call-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 0 16px;
   height: 28px;
   min-height: 28px;
@@ -1732,13 +1733,31 @@ kbd {
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-.json-host {
+.call-toolbar > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 600;
+}
+.call-toolbar .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.call-host {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
-.json-host .cm-editor {
+.call-host .cm-editor {
   height: 100%;
+}
+.call-host .cm-focused {
+  outline: none;
 }
 .json-tree {
   flex: 1;

@@ -32,20 +32,20 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 1. 编辑 GraphQL，点击唯一的 **运行** 按钮。有选区时仅执行选区，没有选区时运行整个文档；`Cmd/Ctrl + Enter` 行为相同。
 2. 首次可打开「练习手册」，载入订单数据。包含客户、商品、订单与明细，24 位客户与 120 笔订单，以及 9 个练习。
 3. 左侧按 Schema 浏览 Query、Mutation、对象类型、枚举和输入类型。支持搜索；mutation 写入数据后会刷新统计。
-4. 点击类型或字段查看参数、返回类型、是否可空与说明。详情里的「插入示例」会放一条可运行的起步查询到编辑器。
-5. 结果是格式化 JSON。点击值可展开全文并复制。文档里有多个 operation 且未选中其中一个时，会给出明确错误。
-6. 变量使用编辑器下方的 JSON 面板，与查询草稿一起保存。历史保存最近 200 次执行；点击历史恢复查询和变量，不自动运行。支持 `.graphql` 导入导出。
+4. 点击类型或字段查看参数、返回类型、是否可空与说明。详情里的「插入示例」会放入操作定义，有参数时同时写入下方调用语句。
+5. 结果是格式化 JSON。点击值可展开全文并复制。文档里有多个 operation 时，可在下方调用其中一个，或选中其中一个再运行。
+6. 上方写 GraphQL 操作定义，下方写调用语句传入参数，例如 `GetCustomer(id: "1")`。没有参数时调用区可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
 7. 右上角切换**浅色 / 深色 / 跟随系统**。蓝灰配色覆盖编辑器、选区、结果和弹窗；选择会记住。
 
 ## 错误
 
 执行走 graphql-js 的标准校验与运行时。语法错误、未知字段等校验问题会带上 `locations`，可在消息面板点「定位错误」。resolver 抛出的业务错误（例如重复取消订单、邮箱冲突）会出现在 `errors`，并尽量保留 `path` 与 `extensions.code`。
 
-同一文档里的多个 operation 遵循 GraphQL 规则：未命名或多个命名操作同时存在时，请选中其中一个再运行。错误之前看到的 `data` 是引擎确实返回的部分结果，**不能视为 mutation 已经全部成功**。
+同一文档里的多个 operation 遵循 GraphQL 规则：请在下方调用其中一个命名操作，或选中其中一个再运行。错误之前看到的 `data` 是引擎确实返回的部分结果，**不能视为 mutation 已经全部成功**。
 
 ## 保存、备份与恢复
 
-- 练习数据保存到 IndexedDB；草稿、变量、历史、布局与主题使用独立应用存储。
+- 练习数据保存到 IndexedDB；草稿、调用语句、历史、布局与主题使用独立应用存储。旧版保存在本地的 JSON 变量会被忽略，不会打断已保存的查询草稿。
 - 同一浏览器、同一地址下刷新会恢复数据。`127.0.0.1`、`localhost` 和不同端口是不同 origin，不能混用。
 - 「数据管理 → 导出练习数据快照」生成 `.gqlplay` 文件，包含版本头与 JSON 数据。
 - 恢复先创建新实例并验证，再切换；原库保留在「数据管理」中，可重新打开。
@@ -70,19 +70,21 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 ```text
 src/App.tsx                     工作台、运行、持久化与库切换
 src/components/GqlEditor.tsx    CodeMirror GraphQL、选区与主题
-src/components/JsonEditor.tsx   变量 JSON 编辑器
+src/components/CallEditor.tsx   操作调用语句编辑器
 src/components/SchemaTree.tsx
 src/components/SchemaDetail.tsx
 src/components/ResultView.tsx   JSON 结果树、展开与复制
 src/graphql/schema.ts           SDL 与 resolver
 src/graphql/store.ts            内存练习库，mutation 直接写入
 src/graphql/execute.ts          graphql-js 执行与多操作校验
+src/graphql/call.ts             调用语句解析与参数绑定
 src/graphql/catalog.ts          Schema 浏览与示例插入
 src/graphql/seed.ts             订单练习数据
 src/storage/store.ts            应用 IndexedDB
 src/storage/snapshot.ts         .gqlplay 快照格式
 src/examples/lessons.ts         欢迎查询与 9 个练习
 tests/graphql.test.ts           真实 schema / store 集成测试
+tests/call.test.ts              调用语句与参数校验
 ```
 
 字体和 graphql-js 随构建打包，没有外部字体 CDN 请求。使用本地开发服务器或静态 HTTP 服务器运行，不要直接双击 dist/index.html。

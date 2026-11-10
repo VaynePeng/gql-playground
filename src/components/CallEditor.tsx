@@ -1,15 +1,16 @@
 import { useEffect, useRef } from "react";
 import { EditorState, Compartment, Prec } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { indentWithTab } from "@codemirror/commands";
-import { json } from "@codemirror/lang-json";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
+import { graphqlLanguageSupport } from "cm6-graphql";
 
 interface Props {
   value: string;
   dark: boolean;
+  focusPosition?: { offset: number; token: number };
   onChange: (value: string) => void;
   onRun: () => void;
 }
@@ -22,48 +23,58 @@ function editorTheme(dark: boolean) {
           height: "100%",
           backgroundColor: "var(--editor)",
           color: "var(--text)",
-          fontSize: "12px",
+          fontSize: "13px",
         },
         ".cm-scroller": {
           fontFamily:
             '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-          lineHeight: "1.7",
+          lineHeight: "1.8",
           overflow: "auto",
         },
         ".cm-content": { padding: "10px 0", caretColor: "var(--accent)" },
-        ".cm-line": { padding: "0 16px 0 8px" },
+        ".cm-line": { padding: "0 24px 0 12px" },
         ".cm-gutters": {
           background: "var(--editor)",
           color: "var(--muted)",
           border: "none",
-          minWidth: "36px",
+          minWidth: "48px",
         },
         ".cm-activeLine, .cm-activeLineGutter": {
           backgroundColor: "var(--active-line)",
         },
         ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
           { backgroundColor: "var(--selection)", borderRadius: "2px" },
+        ".cm-placeholder": { color: "var(--muted)", fontStyle: "italic" },
         ".cm-cursor": { borderLeftColor: "var(--accent)" },
       },
       { dark },
     ),
     syntaxHighlighting(
       HighlightStyle.define([
-        { tag: tags.string, color: dark ? "#e7bd88" : "#ae6739" },
-        { tag: tags.number, color: dark ? "#b8bcf0" : "#7661a4" },
         {
-          tag: tags.bool,
+          tag: tags.keyword,
           color: dark ? "#a1bcff" : "#4268ba",
           fontWeight: "600",
         },
-        { tag: tags.null, color: dark ? "#73839c" : "#8e9aac" },
+        { tag: tags.string, color: dark ? "#e7bd88" : "#ae6739" },
+        {
+          tag: tags.comment,
+          color: dark ? "#73839c" : "#8e9aac",
+          fontStyle: "italic",
+        },
+        { tag: tags.number, color: dark ? "#b8bcf0" : "#7661a4" },
+        { tag: tags.bool, color: dark ? "#a1bcff" : "#4268ba", fontWeight: "600" },
+        { tag: tags.operator, color: dark ? "#a6c9dc" : "#4e7892" },
+        { tag: tags.typeName, color: dark ? "#9fd0c2" : "#3d7a6e" },
         { tag: tags.propertyName, color: dark ? "#c5d4f0" : "#355071" },
+        { tag: tags.attributeName, color: dark ? "#c5b4e8" : "#6a5694" },
+        { tag: tags.name, color: dark ? "#c5d4f0" : "#355071" },
       ]),
     ),
   ];
 }
 
-export function JsonEditor(props: Props) {
+export function CallEditor(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef(props);
@@ -77,10 +88,11 @@ export function JsonEditor(props: Props) {
         doc: callbacks.current.value,
         extensions: [
           basicSetup,
-          json(),
+          graphqlLanguageSupport(),
           theme.current.of(editorTheme(callbacks.current.dark)),
+          placeholder('GetCustomer(id: "1")'),
           EditorView.contentAttributes.of({
-            "aria-label": "GraphQL 变量 JSON 编辑器",
+            "aria-label": "GraphQL 调用语句",
             spellcheck: "false",
           }),
           keymap.of([indentWithTab]),
@@ -124,5 +136,17 @@ export function JsonEditor(props: Props) {
     });
   }, [props.dark]);
 
-  return <div className="json-host" ref={host} />;
+  useEffect(() => {
+    const v = view.current;
+    if (v && props.focusPosition) {
+      const pos = Math.min(props.focusPosition.offset, v.state.doc.length);
+      v.dispatch({
+        selection: { anchor: pos },
+        effects: EditorView.scrollIntoView(pos, { y: "center" }),
+      });
+      v.focus();
+    }
+  }, [props.focusPosition]);
+
+  return <div className="call-host" ref={host} />;
 }

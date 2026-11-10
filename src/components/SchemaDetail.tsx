@@ -1,6 +1,11 @@
 import { ArrowUpRight } from "lucide-react";
 import type { Catalog, FieldInfo, SchemaNode, TypeInfo } from "../types";
-import { findField, findType, starterDocument } from "../graphql/catalog";
+import {
+  findField,
+  findType,
+  starterDocument,
+  type StarterExample,
+} from "../graphql/catalog";
 import { KindIcon, kindLabel } from "./SchemaTree";
 
 function FieldTable({
@@ -65,7 +70,7 @@ export function SchemaDetail({
   catalog: Catalog;
   selected: SchemaNode;
   onSelect: (node: SchemaNode) => void;
-  onInsert: (document: string) => void;
+  onInsert: (example: StarterExample) => void;
 }) {
   const type: TypeInfo | undefined =
     selected.kind === "type"
@@ -94,7 +99,7 @@ export function SchemaDetail({
           <strong>{heading}</strong>
           <small>{sub}</small>
         </div>
-        {starter && !starter.startsWith("#") && (
+        {starter && !starter.query.startsWith("#") && (
           <button
             className="small-button"
             onClick={() => onInsert(starter)}

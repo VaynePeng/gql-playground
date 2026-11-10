@@ -11,9 +11,7 @@ query {
 }
 `;
 
-export const initialVariables = `{
-}
-`;
+export const initialCall = "";
 
 export const lessons = [
   {
@@ -29,9 +27,7 @@ export const lessons = [
   }
 }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
   {
     title: "参数与过滤",
@@ -46,9 +42,7 @@ export const lessons = [
   }
 }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
   {
     title: "嵌套关系",
@@ -74,9 +68,7 @@ export const lessons = [
   }
 }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
   {
     title: "别名",
@@ -93,9 +85,7 @@ export const lessons = [
   }
 }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
   {
     title: "片段",
@@ -129,15 +119,13 @@ query Fragments {
   }
 }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
   {
-    title: "变量与指令",
-    level: "06 · 变量",
-    description: "JSON 变量编辑器，配合 @include",
-    query: `query Variables($status: OrderStatus, $withNote: Boolean!) {
+    title: "调用与指令",
+    level: "06 · 调用",
+    description: "定义操作，再在下方调用传入参数",
+    query: `query OrdersByStatus($status: OrderStatus, $withNote: Boolean!) {
   orders(status: $status, limit: 12) {
     id
     status
@@ -146,24 +134,15 @@ query Fragments {
   }
 }
 `,
-    variables: `{
-  "status": "SHIPPED",
-  "withNote": true
-}
+    call: `OrdersByStatus(status: SHIPPED, withNote: true)
 `,
   },
   {
     title: "变更会留下来",
     level: "07 · 变更",
-    description: "创建客户，再查询确认已写入",
-    query: `mutation CreateCustomer {
-  createCustomer(
-    input: {
-      name: "练习同学"
-      city: "苏州"
-      email: "practice.learner@example.test"
-    }
-  ) {
+    description: "调用 mutation，再查询确认已写入",
+    query: `mutation CreateCustomer($input: CreateCustomerInput!) {
+  createCustomer(input: $input) {
     id
     name
     city
@@ -180,25 +159,15 @@ query Fragments {
 #   }
 # }
 `,
-    variables: `{
-}
+    call: `CreateCustomer(input: { name: "练习同学", city: "苏州", email: "practice.learner@example.test" })
 `,
   },
   {
     title: "输入类型与枚举",
     level: "08 · 输入",
-    description: "嵌套 input 与 OrderStatus",
-    query: `mutation PlaceOrder {
-  createOrder(
-    input: {
-      customerId: "1"
-      note: "手册练习"
-      items: [
-        { productId: "1", quantity: 1 }
-        { productId: "4", quantity: 2 }
-      ]
-    }
-  ) {
+    description: "调用里传入嵌套 input 与 OrderStatus",
+    query: `mutation PlaceOrder($input: CreateOrderInput!) {
+  createOrder(input: $input) {
     id
     status
     total
@@ -213,16 +182,16 @@ query Fragments {
 }
 
 # 也可以把已有订单改成枚举值 SHIPPED：
-# mutation UpdateStatus {
-#   updateOrder(id: "1", input: { status: SHIPPED, note: "已发货" }) {
+# mutation UpdateStatus($id: ID!, $input: UpdateOrderInput!) {
+#   updateOrder(id: $id, input: $input) {
 #     id
 #     status
 #     note
 #   }
 # }
+# UpdateStatus(id: "1", input: { status: SHIPPED, note: "已发货" })
 `,
-    variables: `{
-}
+    call: `PlaceOrder(input: { customerId: "1", note: "手册练习", items: [{ productId: "1", quantity: 1 }, { productId: "4", quantity: 2 }] })
 `,
   },
   {
@@ -244,8 +213,6 @@ query Fragments {
 #   }
 # }
 `,
-    variables: `{
-}
-`,
+    call: "",
   },
 ];
