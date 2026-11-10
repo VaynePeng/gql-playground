@@ -160,6 +160,34 @@ function sampleInput(typeName: string) {
   return "{}";
 }
 
+function toPascal(name: string) {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+export function starterOperationName(
+  fieldName: string,
+  isMutation: boolean,
+  args: ArgInfo[],
+) {
+  const pascal = toPascal(fieldName);
+  if (
+    !isMutation &&
+    args.some((arg) => arg.name === "id" && !arg.nullable) &&
+    !/^get/i.test(fieldName)
+  ) {
+    return `Get${pascal}`;
+  }
+  return pascal;
+}
+
+function variableDefs(args: ArgInfo[]) {
+  return args.map((arg) => `$${arg.name}: ${arg.type}`).join(", ");
+}
+
+function variablePasses(args: ArgInfo[]) {
+  return args.map((arg) => `${arg.name}: $${arg.name}`).join(", ");
+}
+
 function sampleArgs(args: ArgInfo[]) {
   if (!args.length) return "";
   const inner = args
@@ -180,6 +208,15 @@ function sampleArgs(args: ArgInfo[]) {
     })
     .join(", ");
   return `(${inner})`;
+}
+
+export interface StarterExample {
+  query: string;
+  call: string;
+}
+
+function example(query: string, call = ""): StarterExample {
+  return { query, call };
 }
 
 function selectionFor(
@@ -224,10 +261,30 @@ function selectionFor(
   return ` {\n${picked.map((field) => `  ${field.name}`).join("\n")}${extra}\n}`;
 }
 
+function rootOperation(
+  keyword: "query" | "mutation",
+  fieldName: string,
+  args: ArgInfo[],
+  selection: string,
+): StarterExample {
+  const isMutation = keyword === "mutation";
+  const body = selection
+    ? `${fieldName}${args.length ? `(${variablePasses(args)})` : ""} ${indentLines(selection.trim(), 2).trimStart()}`
+    : `${fieldName}${args.length ? `(${variablePasses(args)})` : ""}`;
+  if (!args.length) {
+    return example(`${keyword} {\n  ${body}\n}\n`);
+  }
+  const opName = starterOperationName(fieldName, isMutation, args);
+  return example(
+    `${keyword} ${opName}(${variableDefs(args)}) {\n  ${body}\n}\n`,
+    `${opName}${sampleArgs(args)}\n`,
+  );
+}
+
 export function starterDocument(
   catalog: Catalog,
   node: SchemaNode,
-): string | null {
+): StarterExample | null {
   if (node.kind === "type") {
     const type = findType(catalog, node.name);
     if (!type) return null;
@@ -250,7 +307,9 @@ export function starterDocument(
       });
     }
     if (type.kind === "enum") {
-      return `# ${type.name}：${type.enumValues.map((v) => v.name).join(" | ")}\n`;
+      return example(
+        `# ${type.name}：${type.enumValues.map((v) => v.name).join(" | ")}\n`,
+      );
     }
     const queryRoot = catalog.query.fields.find(
       (field) => field.namedType === type.name,
@@ -284,12 +343,10 @@ export function starterDocument(
     const selection = field.isLeaf
       ? ""
       : selectionFor(catalog, field.namedType, 0);
-    const args = sampleArgs(field.args);
-    if (!selection) return `${keyword} {\n  ${field.name}${args}\n}\n`;
-    return `${keyword} {\n  ${field.name}${args} ${indentLines(selection.trim(), 2).trimStart()}\n}\n`;
+    return rootOperation(keyword, field.name, field.args, selection);
   }
   const root = catalog.query.fields.find((item) => item.namedType === type.name);
-  if (!root) return `# ${type.name}.${field.name}: ${field.type}\n`;
+  if (!root) return example(`# ${type.name}.${field.name}: ${field.type}\n`);
   const nested = field.isLeaf
     ? field.name
     : `${field.name}${sampleArgs(field.args)}${selectionFor(catalog, field.namedType, 1)}`;
@@ -297,7 +354,17 @@ export function starterDocument(
     .filter((item) => item.isLeaf && item.args.length === 0)
     .slice(0, 3)
     .map((item) => item.name);
-  return `query {\n  ${root.name}${sampleArgs(root.args)} {\n${parentLeaves
+  const inner = `{\n${parentLeaves
     .map((name) => `    ${name}`)
-    .join("\n")}\n    ${nested.split("\n").join("\n    ")}\n  }\n}\n`;
+    .join("\n")}\n    ${nested.split("\n").join("\n    ")}\n  }`;
+  if (!root.args.length) {
+    return example(
+      `query {\n  ${root.name} ${inner}\n}\n`,
+    );
+  }
+  const opName = starterOperationName(root.name, false, root.args);
+  return example(
+    `query ${opName}(${variableDefs(root.args)}) {\n  ${root.name}(${variablePasses(root.args)}) ${inner}\n}\n`,
+    `${opName}${sampleArgs(root.args)}\n`,
+  );
 }

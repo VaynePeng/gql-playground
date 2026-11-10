@@ -29,6 +29,7 @@ import {
   X,
   Braces,
   Share2,
+  CornerDownRight,
 } from "lucide-react";
 import { version as graphqlVersion } from "graphql";
 import {
@@ -51,7 +52,7 @@ import type {
   StoreStats,
 } from "./types";
 import { GqlEditor } from "./components/GqlEditor";
-import { JsonEditor } from "./components/JsonEditor";
+import { CallEditor } from "./components/CallEditor";
 import { SchemaTree } from "./components/SchemaTree";
 import { SchemaDetail } from "./components/SchemaDetail";
 import { ResultView } from "./components/ResultView";
@@ -61,8 +62,9 @@ import { PracticeStore } from "./graphql/store";
 import { getSchema } from "./graphql/schema";
 import { readCatalog } from "./graphql/catalog";
 import { executeGql, locationToOffset } from "./graphql/execute";
+import { CALL_SOURCE } from "./graphql/call";
 import { emptyData, seedSummary } from "./graphql/seed";
-import { download, parseVariables, toErrorMessage } from "./utils";
+import { download, toErrorMessage } from "./utils";
 
 const schema = getSchema();
 const engineLabel = `graphql-js ${graphqlVersion}`;
@@ -121,12 +123,17 @@ export function App() {
   const [execution, setExecution] = useState<Execution>();
   const [executed, setExecuted] = useState<{
     query: string;
+    call: string;
     draft: string;
     from: number;
     duration: number;
   }>();
   const [panel, setPanel] = useState<Panel>("results");
   const [focusPosition, setFocusPosition] = useState<{
+    offset: number;
+    token: number;
+  }>();
+  const [callFocus, setCallFocus] = useState<{
     offset: number;
     token: number;
   }>();
@@ -275,45 +282,22 @@ export function App() {
     setPanel("results");
     const started = performance.now();
     const draft = dataRef.current?.draft || "";
+    const call = dataRef.current?.call || "";
     try {
-      let variableValues: Record<string, unknown> = {};
-      try {
-        variableValues = parseVariables(dataRef.current?.variables || "{}");
-      } catch (error) {
-        const executionResult: Execution = {
-          data: null,
-          errors: [{ message: toErrorMessage(error) }],
-          json: JSON.stringify(
-            { data: null, errors: [{ message: toErrorMessage(error) }] },
-            null,
-            2,
-          ),
-          operation: "variables",
-        };
-        setExecution(executionResult);
-        setExecuted({
-          query: source,
-          draft,
-          from,
-          duration: performance.now() - started,
-        });
-        setPanel("messages");
-        return;
-      }
       const result = await executeGql({
         schema,
         store: storeRef.current,
         source,
-        variableValues,
+        call,
       });
       const duration = performance.now() - started;
       setExecution(result);
-      setExecuted({ query: source, draft, from, duration });
+      setExecuted({ query: source, call, draft, from, duration });
       if (result.errors?.length) setPanel("messages");
       const history: HistoryItem = {
         id: crypto.randomUUID(),
         query: source,
-        variables: dataRef.current?.variables || "{}",
+        call,
         scope: selectedText ? "选区" : "全部",
         time: new Date().toISOString(),
         duration,
@@ -354,13 +338,13 @@ export function App() {
     }
   }
 
-  function putDraft(query: string, variables?: string) {
+  function putDraft(query: string, call?: string) {
     setData((current) =>
       current
         ? {
             ...current,
             draft: query,
-            variables: variables ?? current.variables,
+            call: call ?? current.call,
           }
         : current,
     );
@@ -374,7 +358,7 @@ export function App() {
       await persistPractice();
       refresh();
       setNotice(reset ? "练习数据已重置" : `练习数据已载入：${seedSummary}`);
-      putDraft(lessons[0].query, lessons[0].variables);
+      putDraft(lessons[0].query, lessons[0].call);
       setDialog(null);
     });
   }
@@ -447,9 +431,23 @@ export function App() {
   }
 
   function locateError() {
-    const location = execution?.errors?.find((error) => error.locations?.[0])
-      ?.locations?.[0];
+    const error = execution?.errors?.find((item) => item.locations?.[0]);
+    const location = error?.locations?.[0];
     if (!executed || !location) return;
+    const inCall = error?.extensions?.source === CALL_SOURCE;
+    if (inCall) {
+      if (data?.call !== executed.call) {
+        setNotice("调用语句已修改，请从历史恢复后再定位。");
+        return;
+      }
+      const offset = locationToOffset(
+        executed.call,
+        location.line,
+        location.column,
+      );
+      setCallFocus({ offset, token: Date.now() });
+      return;
+    }
     if (data?.draft !== executed.draft) {
       setNotice("编辑器内容已修改，请从历史恢复原查询后再定位。");
       return;
@@ -464,7 +462,7 @@ export function App() {
 
   const history =
     data?.history.filter((item) =>
-      `${item.query} ${item.variables} ${item.summary}`
+      `${item.query} ${item.call} ${item.summary}`
         .toLowerCase()
         .includes(historySearch.toLowerCase()),
     ) || [];
@@ -640,23 +638,6 @@ export function App() {
                   </div>
                   <div className="editor-actions">
                     <button
-                      className={`icon-button ${data?.variablesOpen ? "active-toggle" : ""}`}
-                      aria-label="变量编辑器"
-                      title="变量 JSON"
-                      onClick={() =>
-                        setData((current) =>
-                          current
-                            ? {
-                                ...current,
-                                variablesOpen: !current.variablesOpen,
-                              }
-                            : current,
-                        )
-                      }
-                    >
-                      <Braces size={14} />
-                    </button>
-                    <button
                       className="icon-button"
                       aria-label="导入 GraphQL 文件"
                       title="导入 GraphQL 文件"
@@ -727,32 +708,34 @@ export function App() {
                       void run(text, from, selectedText)
                     }
                   />
-                  {data?.variablesOpen && (
-                    <div className="variables-pane">
-                      <div className="variables-toolbar">
-                        <span>变量 · JSON</span>
-                        <span className="muted">与查询一起保存和恢复</span>
-                      </div>
-                      <JsonEditor
-                        value={data.variables}
-                        dark={dark}
-                        onChange={(value) =>
-                          setData((current) =>
-                            current
-                              ? { ...current, variables: value }
-                              : current,
-                          )
-                        }
-                        onRun={() =>
-                          void run(
-                            selection.text || data.draft || "",
-                            selection.text ? selection.from : 0,
-                            !!selection.text,
-                          )
-                        }
-                      />
+                  <div className="call-pane">
+                    <div className="call-toolbar">
+                      <span>
+                        <CornerDownRight size={12} />
+                        调用
+                      </span>
+                      <span className="muted">
+                        有参数时在此调用，例如 GetCustomer(id: "1") · 无参数可留空
+                      </span>
                     </div>
-                  )}
+                    <CallEditor
+                      value={data?.call || ""}
+                      dark={dark}
+                      focusPosition={callFocus}
+                      onChange={(value) =>
+                        setData((current) =>
+                          current ? { ...current, call: value } : current,
+                        )
+                      }
+                      onRun={() =>
+                        void run(
+                          selection.text || data?.draft || "",
+                          selection.text ? selection.from : 0,
+                          !!selection.text,
+                        )
+                      }
+                    />
+                  </div>
                 </div>
                 <div className="editor-status">
                   <span>
@@ -920,9 +903,9 @@ export function App() {
                       catalog={catalog}
                       selected={selected}
                       onSelect={(node) => setSelected(node)}
-                      onInsert={(document) => {
-                        putDraft(document);
-                        setNotice("示例查询已放入编辑器，尚未执行");
+                      onInsert={(example) => {
+                        putDraft(example.query, example.call);
+                        setNotice("示例已放入编辑器，尚未执行");
                         setPanel("results");
                       }}
                     />
@@ -940,7 +923,7 @@ export function App() {
                         <Search size={14} />
                         <input
                           aria-label="搜索执行历史"
-                          placeholder="搜索查询、变量或结果…"
+                          placeholder="搜索查询、调用或结果…"
                           value={historySearch}
                           onChange={(event) =>
                             setHistorySearch(event.target.value)
@@ -971,9 +954,9 @@ export function App() {
                             className="history-item"
                             key={item.id}
                             onClick={() => {
-                              putDraft(item.query, item.variables);
+                              putDraft(item.query, item.call);
                               setNotice(
-                                "查询和变量已恢复到编辑器，尚未执行",
+                                "查询和调用已恢复到编辑器，尚未执行",
                               );
                             }}
                           >
@@ -1093,7 +1076,7 @@ export function App() {
             <span className="eyebrow">LEARN BY QUERYING</span>
             <h3>从一个字段，到一次变更。</h3>
             <p>
-              {seedSummary}，覆盖查询、参数、嵌套、片段、变量与 mutation。
+              {seedSummary}，覆盖查询、参数、嵌套、片段、调用与 mutation。
               <br />
               先载入数据，再选一条练习，改一改、运行看看。
             </p>
@@ -1128,7 +1111,7 @@ export function App() {
                 key={lesson.title}
                 className="lesson-card"
                 onClick={() => {
-                  putDraft(lesson.query, lesson.variables);
+                  putDraft(lesson.query, lesson.call);
                   setDialog(null);
                   setNotice(
                     exampleLoaded
@@ -1271,9 +1254,8 @@ export function App() {
             <h3>运行与操作</h3>
             <p>
               ⌘ / Ctrl + Enter 优先执行选区，无选区时执行整个文档。文档含多个
-              operation
-              时请选中其中一个，或只保留一个操作。变量使用右侧/下方 JSON
-              编辑器，必须是对象。
+              operation 时，可在下方调用语句里写操作名，或选中其中一个再运行。
+              需要参数时，在查询下方写调用，例如 GetCustomer(id: "1")；没有参数时调用区可以留空。
             </p>
             <h3>结果与保存</h3>
             <p>

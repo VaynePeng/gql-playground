@@ -47,7 +47,7 @@ test("catalog exposes query, mutation, nested args and ordered enum values", () 
     typeName: catalog.query.name,
     fieldName: "products",
   });
-  assert.match(inserted || "", /products/);
+  assert.match(inserted?.query || "", /products/);
 });
 
 test("seed data matches the practice handbook scale", () => {
@@ -193,7 +193,7 @@ test("practice lessons execute; the error lesson is a real validation failure", 
       schema,
       store: practice,
       source: lesson.query,
-      variableValues: JSON.parse(lesson.variables.trim() || "{}"),
+      call: lesson.call,
     });
     if (lesson.title === "认识错误") {
       assert.ok(result.errors?.length, lesson.title);

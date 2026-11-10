@@ -62,7 +62,7 @@ export type SchemaNode =
 export interface HistoryItem {
   id: string;
   query: string;
-  variables: string;
+  call: string;
   scope: string;
   time: string;
   duration: number;
@@ -75,11 +75,10 @@ export interface AppData {
   databaseId: string;
   retired: string[];
   draft: string;
-  variables: string;
+  call: string;
   history: HistoryItem[];
   sidebar: number;
   editorHeight: number;
-  variablesOpen: boolean;
 }
 
 export type OrderStatus =

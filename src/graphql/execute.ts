@@ -9,6 +9,7 @@ import {
 } from "graphql";
 import type { Execution, GqlError } from "../types";
 import type { PracticeStore } from "./store";
+import { ambiguousOperationsError, resolveExecutionCall } from "./call";
 
 function formatError(error: GraphQLError): GqlError {
   const json = error.toJSON();
@@ -57,6 +58,7 @@ export async function executeGql(options: {
   schema: GraphQLSchema;
   store: PracticeStore;
   source: string;
+  call?: string | null;
   variableValues?: Record<string, unknown> | null;
   operationName?: string | null;
 }): Promise<Execution> {
@@ -99,34 +101,48 @@ export async function executeGql(options: {
     };
   }
 
-  if (operations.length > 1 && !options.operationName) {
-    const names = operations.map((node) => node.name?.value).filter(Boolean);
-    const unnamed = operations.length - names.length;
-    const errors = [
-      {
-        message: unnamed
-          ? `文档包含 ${operations.length} 个操作，且有未命名操作。请只运行一个操作，或为每个操作命名后选中其中一个再运行。`
-          : `文档包含多个操作（${names.join("、")}）。请选中其中一个操作再运行，或只保留一个操作。`,
-      },
-    ];
-    return {
-      data: null,
-      errors,
-      json: payloadJson(null, errors),
-      operation: "ambiguous",
-    };
-  }
+  const useCall = options.call !== undefined && options.call !== null;
+  let selected: OperationDefinitionNode;
+  let variableValues = options.variableValues ?? undefined;
 
-  const selected =
-    operations.find((node) => node.name?.value === options.operationName) ??
-    operations[0];
+  if (useCall) {
+    const resolved = resolveExecutionCall({
+      schema: options.schema,
+      operations,
+      callSource: options.call || "",
+      operationName: options.operationName,
+    });
+    if (!resolved.ok) {
+      return {
+        data: null,
+        errors: resolved.errors,
+        json: payloadJson(null, resolved.errors),
+        operation: "call",
+      };
+    }
+    selected = resolved.value.operation;
+    variableValues = resolved.value.variableValues;
+  } else {
+    if (operations.length > 1 && !options.operationName) {
+      const errors = [ambiguousOperationsError(operations)];
+      return {
+        data: null,
+        errors,
+        json: payloadJson(null, errors),
+        operation: "ambiguous",
+      };
+    }
+    selected =
+      operations.find((node) => node.name?.value === options.operationName) ??
+      operations[0];
+  }
 
   try {
     const result = await graphql({
       schema: options.schema,
       source,
       contextValue: { store: options.store },
-      variableValues: options.variableValues ?? undefined,
+      variableValues,
       operationName: options.operationName ?? selected.name?.value,
     });
     const errors = result.errors?.map(formatError);
