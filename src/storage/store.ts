@@ -51,7 +51,7 @@ export function migrateWorkspace(stored: StoredWorkspace): AppData {
     history: (stored.history ?? []).map(migrateHistory),
     sidebar: stored.sidebar ?? defaults.sidebar,
     editorHeight:
-      stored.editorHeight == null || stored.editorHeight === 43
+      stored.editorHeight == null || stored.editorHeight === 56
         ? defaults.editorHeight
         : stored.editorHeight,
   };
@@ -65,7 +65,7 @@ export function defaultWorkspace(): AppData {
     call: initialCall,
     history: [],
     sidebar: 256,
-    editorHeight: 56,
+    editorHeight: 43,
   };
 }
 

@@ -1,8 +1,12 @@
 import { useEffect, useRef } from "react";
 import { EditorState, Compartment, Prec } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
-import { basicSetup } from "codemirror";
-import { indentWithTab } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { graphqlLanguageSupport } from "cm6-graphql";
@@ -21,54 +25,43 @@ function editorTheme(dark: boolean) {
       {
         "&": {
           height: "100%",
-          backgroundColor: "var(--editor)",
+          backgroundColor: "transparent",
           color: "var(--text)",
-          fontSize: "13px",
+          fontSize: "12px",
         },
         ".cm-scroller": {
           fontFamily:
             '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-          lineHeight: "1.8",
-          overflow: "auto",
+          lineHeight: "20px",
+          overflow: "auto hidden",
         },
-        ".cm-content": { padding: "10px 0", caretColor: "var(--accent)" },
-        ".cm-line": { padding: "0 24px 0 12px" },
-        ".cm-gutters": {
-          background: "var(--editor)",
-          color: "var(--muted)",
-          border: "none",
-          minWidth: "48px",
-        },
-        ".cm-activeLine, .cm-activeLineGutter": {
-          backgroundColor: "var(--active-line)",
-        },
+        ".cm-content": { padding: "8px 0", caretColor: "var(--accent)" },
+        ".cm-line": { padding: "0 12px" },
+        ".cm-gutters": { display: "none" },
+        ".cm-activeLine": { backgroundColor: "transparent" },
         ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
           { backgroundColor: "var(--selection)", borderRadius: "2px" },
-        ".cm-placeholder": { color: "var(--muted)", fontStyle: "italic" },
+        ".cm-placeholder": { color: "var(--muted)" },
         ".cm-cursor": { borderLeftColor: "var(--accent)" },
       },
       { dark },
     ),
     syntaxHighlighting(
       HighlightStyle.define([
+        { tag: tags.string, color: dark ? "#e7bd88" : "#ae6739" },
+        { tag: tags.number, color: dark ? "#b8bcf0" : "#7661a4" },
         {
-          tag: tags.keyword,
+          tag: tags.bool,
           color: dark ? "#a1bcff" : "#4268ba",
           fontWeight: "600",
         },
-        { tag: tags.string, color: dark ? "#e7bd88" : "#ae6739" },
         {
           tag: tags.comment,
           color: dark ? "#73839c" : "#8e9aac",
           fontStyle: "italic",
         },
-        { tag: tags.number, color: dark ? "#b8bcf0" : "#7661a4" },
-        { tag: tags.bool, color: dark ? "#a1bcff" : "#4268ba", fontWeight: "600" },
-        { tag: tags.operator, color: dark ? "#a6c9dc" : "#4e7892" },
-        { tag: tags.typeName, color: dark ? "#9fd0c2" : "#3d7a6e" },
-        { tag: tags.propertyName, color: dark ? "#c5d4f0" : "#355071" },
-        { tag: tags.attributeName, color: dark ? "#c5b4e8" : "#6a5694" },
         { tag: tags.name, color: dark ? "#c5d4f0" : "#355071" },
+        { tag: tags.propertyName, color: dark ? "#c5d4f0" : "#355071" },
       ]),
     ),
   ];
@@ -87,7 +80,7 @@ export function CallEditor(props: Props) {
       state: EditorState.create({
         doc: callbacks.current.value,
         extensions: [
-          basicSetup,
+          history(),
           graphqlLanguageSupport(),
           theme.current.of(editorTheme(callbacks.current.dark)),
           placeholder('GetCustomer(id: "1")'),
@@ -95,9 +88,17 @@ export function CallEditor(props: Props) {
             "aria-label": "GraphQL 调用语句",
             spellcheck: "false",
           }),
-          keymap.of([indentWithTab]),
+          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           Prec.highest(
             keymap.of([
+              {
+                key: "Enter",
+                preventDefault: true,
+                run: () => {
+                  callbacks.current.onRun();
+                  return true;
+                },
+              },
               {
                 key: "Mod-Enter",
                 preventDefault: true,

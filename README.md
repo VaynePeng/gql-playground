@@ -34,7 +34,7 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 3. 左侧按 Schema 浏览 Query、Mutation、对象类型、枚举和输入类型。支持搜索；mutation 写入数据后会刷新统计。
 4. 点击类型或字段查看参数、返回类型、是否可空与说明。详情里的「插入示例」会放入操作定义，有参数时同时写入下方调用语句。
 5. 结果是格式化 JSON。点击值可展开全文并复制。文档里有多个 operation 时，可在下方调用其中一个，或选中其中一个再运行。
-6. 上方写 GraphQL 操作定义，下方写调用语句传入参数，例如 `GetCustomer(id: "1")`。没有参数时调用区可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
+6. 上方写 GraphQL 操作定义；编辑器卡片底部的调用条传入参数，例如 `GetCustomer(id: "1")`。没有参数时可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
 7. 右上角切换**浅色 / 深色 / 跟随系统**。蓝灰配色覆盖编辑器、选区、结果和弹窗；选择会记住。
 
 ## 错误
@@ -70,7 +70,7 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 ```text
 src/App.tsx                     工作台、运行、持久化与库切换
 src/components/GqlEditor.tsx    CodeMirror GraphQL、选区与主题
-src/components/CallEditor.tsx   操作调用语句编辑器
+src/components/CallEditor.tsx   编辑器底部的调用条
 src/components/SchemaTree.tsx
 src/components/SchemaDetail.tsx
 src/components/ResultView.tsx   JSON 结果树、展开与复制

@@ -708,16 +708,14 @@ export function App() {
                       void run(text, from, selectedText)
                     }
                   />
-                  <div className="call-pane">
-                    <div className="call-toolbar">
-                      <span>
-                        <CornerDownRight size={12} />
-                        调用
-                      </span>
-                      <span className="muted">
-                        有参数时在此调用，例如 GetCustomer(id: "1") · 无参数可留空
-                      </span>
-                    </div>
+                  <div
+                    className="call-bar"
+                    title="有参数时在此调用，例如 GetCustomer(id: &quot;1&quot;)。无参数可留空。"
+                  >
+                    <span className="call-bar-label">
+                      <CornerDownRight size={12} />
+                      调用
+                    </span>
                     <CallEditor
                       value={data?.call || ""}
                       dark={dark}
@@ -735,19 +733,12 @@ export function App() {
                         )
                       }
                     />
+                    <span className="call-bar-meta">
+                      {selection.text
+                        ? `选区 ${selection.text.length}`
+                        : saveState}
+                    </span>
                   </div>
-                </div>
-                <div className="editor-status">
-                  <span>
-                    GraphQL <span className="muted">·</span> 浏览器内执行
-                  </span>
-                  <span>
-                    {selection.text
-                      ? `已选择 ${selection.text.length} 个字符 · 快捷键执行选区`
-                      : "⌘ / Ctrl + Enter 运行"}
-                    <span className="status-divider">|</span>
-                    {saveState}
-                  </span>
                 </div>
               </section>
               <div
@@ -883,17 +874,6 @@ export function App() {
                         {execution
                           ? "执行完成，没有 GraphQL 错误。"
                           : "还没有执行记录。"}
-                      </p>
-                    )}
-                    {execution && (
-                      <p className="command-line">
-                        <span>01</span>
-                        <code>{execution.operation}</code>
-                        <small>
-                          {execution.errors?.length
-                            ? `${execution.errors.length} 个错误`
-                            : "成功"}
-                        </small>
                       </p>
                     )}
                   </div>
@@ -1255,7 +1235,7 @@ export function App() {
             <p>
               ⌘ / Ctrl + Enter 优先执行选区，无选区时执行整个文档。文档含多个
               operation 时，可在下方调用语句里写操作名，或选中其中一个再运行。
-              需要参数时，在查询下方写调用，例如 GetCustomer(id: "1")；没有参数时调用区可以留空。
+              需要参数时，在编辑器底部的调用条写入，例如 GetCustomer(id: "1")；没有参数时可留空。
             </p>
             <h3>结果与保存</h3>
             <p>
