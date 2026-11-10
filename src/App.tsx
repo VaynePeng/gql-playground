@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -30,6 +31,7 @@ import {
   Braces,
   Share2,
   CornerDownRight,
+  Table2,
 } from "lucide-react";
 import { version as graphqlVersion } from "graphql";
 import {
@@ -55,11 +57,13 @@ import type {
 import { GqlEditor } from "./components/GqlEditor";
 import { CallEditor } from "./components/CallEditor";
 import { SchemaTree } from "./components/SchemaTree";
+import { DataPreview } from "./components/DataPreview";
 import { SchemaDetail } from "./components/SchemaDetail";
 import { ResultView } from "./components/ResultView";
 import { Modal } from "./components/Modal";
 import { lessons } from "./examples/lessons";
 import { PracticeStore } from "./graphql/store";
+import { describeDatabase, type DatabaseTable } from "./graphql/databaseView";
 import { getSchema } from "./graphql/schema";
 import { readCatalog } from "./graphql/catalog";
 import { executeGql, locationToOffset } from "./graphql/execute";
@@ -74,7 +78,7 @@ const themeOptions = [
   { value: "dark", label: "深色", Icon: Moon },
   { value: "system", label: "跟随系统", Icon: Monitor },
 ] as const;
-type Panel = "results" | "messages" | "detail" | "history";
+type Panel = "results" | "data" | "messages" | "detail" | "history";
 type Dialog = "lessons" | "backup" | "reset" | "help" | null;
 
 function summarize(execution: Execution) {
@@ -119,6 +123,13 @@ export function App() {
     items: 0,
   });
   const [practice, setPractice] = useState<PracticeData>(() => emptyData());
+  const [tableKey, setTableKey] = useState<DatabaseTable["key"]>("customers");
+  const database = useMemo(
+    () => describeDatabase(practice, catalog),
+    [practice, catalog],
+  );
+  const activeTable =
+    database.tables.find((table) => table.key === tableKey) ?? database.tables[0];
   const [stale, setStale] = useState("");
   const [selected, setSelected] = useState<SchemaNode>();
   const [selection, setSelection] = useState({ text: "", from: 0 });
@@ -590,7 +601,13 @@ export function App() {
             <SchemaTree
               catalog={catalog}
               practice={practice}
+              activeTable={panel === "data" ? tableKey : ""}
               selected={selected}
+              onOpenTable={(key) => {
+                setTableKey(key);
+                setPanel("data");
+                setMobileTree(false);
+              }}
               onSelect={(node) => {
                 setSelected(node);
                 setPanel("detail");
@@ -603,7 +620,7 @@ export function App() {
             <div
               className="divider vertical"
               role="separator"
-              aria-label="调整数据栏宽度"
+              aria-label="调整对象栏宽度"
               aria-orientation="vertical"
               tabIndex={0}
               onPointerDown={(event) => resize(event, "sidebar")}
@@ -778,6 +795,7 @@ export function App() {
                     {(
                       [
                         { key: "results", label: "查询结果", Icon: Braces },
+                        { key: "data", label: "表数据", Icon: Table2 },
                         { key: "messages", label: "消息", Icon: Terminal },
                         { key: "detail", label: "类型详情", Icon: Share2 },
                         { key: "history", label: "历史记录", Icon: History },
@@ -844,6 +862,16 @@ export function App() {
                         <span className="status-dot" /> 在浏览器里运行 ·
                         无需后端服务
                       </span>
+                    </div>
+                  )
+                ) : panel === "data" ? (
+                  activeTable ? (
+                    <DataPreview table={activeTable} />
+                  ) : (
+                    <div className="empty-state">
+                      <Table2 size={28} />
+                      <h3>从左侧选择一张表</h3>
+                      <p>当前行会分页显示在这里。</p>
                     </div>
                   )
                 ) : panel === "messages" ? (
@@ -1243,7 +1271,7 @@ export function App() {
               需要参数时，在编辑器底部的调用条写入，例如 GetCustomer(id: "1")；没有参数时可留空。
             </p>
             <p>
-              左侧是练习库：每张表列出文档字段和当前行。表下面的名称是读写这张表的操作，点进去可以插入示例，再在编辑器里运行。
+              左侧列出练习库里的表、字段和读写操作。点一张表，下方「表数据」会分页显示当前行。变更写入后，这一页会跟着刷新。
             </p>
             <h3>结果与保存</h3>
             <p>

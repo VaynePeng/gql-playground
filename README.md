@@ -31,9 +31,9 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 
 1. 编辑 GraphQL，点击唯一的 **运行** 按钮。有选区时仅执行选区，没有选区时运行整个文档；`Cmd/Ctrl + Enter` 行为相同。
 2. 首次可打开「练习手册」，载入订单数据。包含客户、商品、订单与明细，24 位客户与 120 笔订单，以及 9 个练习。
-3. 左侧先浏览练习库。客户、商品、订单、订单明细各自列出文档里的字段名和当前行，不用先写查询。点开一行可看该行全部字段；文档里没有的字段保持缺失，不会换成别的名字。
-4. 每张表下面是读写它的操作，例如客户表上的 `customer`、`customers`、`createCustomer`。点操作可查看参数，并用「插入示例」放进编辑器。这些操作来自表，左侧不再用 Query / Mutation 当目录。不直接对应单张表的 `hello`、`stats`、`search` 收在表后面。类型、枚举和输入默认折叠在底部。
-5. 写入练习库后，左侧的行和计数会跟着变。搜索可以按表名、字段或单元格过滤。
+3. 左侧浏览练习库对象：客户、商品、订单、订单明细。展开后是字段名和读写这张表的操作。
+4. 点一张表，下方「表数据」分页显示当前行。列名与文档字段一致；没有的字段保持缺失，不会换成别的名字。写入练习库后，这一页会刷新。
+5. 点操作可查看参数，并用「插入示例」放进编辑器。这些操作来自表，左侧不再用 Query / Mutation 当目录。不直接对应单张表的 `hello`、`stats`、`search` 收在表后面。类型、枚举和输入默认折叠在底部。
 6. 结果是格式化 JSON。点击值可展开全文并复制。文档里有多个 operation 时，可在下方调用其中一个，或选中其中一个再运行。
 7. 上方写 GraphQL 操作定义；编辑器卡片底部的调用条传入参数，例如 `GetCustomer(id: "1")`。没有参数时可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
 8. 右上角切换**浅色 / 深色 / 跟随系统**。蓝灰配色覆盖编辑器、选区、结果和弹窗；选择会记住。
@@ -72,7 +72,8 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 src/App.tsx                     工作台、运行、持久化与库切换
 src/components/GqlEditor.tsx    CodeMirror GraphQL、选区与主题
 src/components/CallEditor.tsx   编辑器底部的调用条
-src/components/SchemaTree.tsx   左侧练习库：表、当前行，以及来自这些表的操作
+src/components/SchemaTree.tsx   左侧对象：表、字段，以及来自这些表的操作
+src/components/DataPreview.tsx  下方表数据：当前行的分页预览
 src/components/SchemaDetail.tsx 字段参数、可空性与示例插入
 src/components/ResultView.tsx   JSON 结果树、展开与复制
 src/graphql/schema.ts           SDL 与 resolver
@@ -87,7 +88,7 @@ src/storage/snapshot.ts         .gqlplay 快照格式
 src/examples/lessons.ts         欢迎查询与 9 个练习
 tests/graphql.test.ts           真实 schema / store 集成测试
 tests/call.test.ts              调用语句与参数校验
-tests/databaseView.test.ts      表字段、当前行，以及操作是否挂在对应的表上
+tests/databaseView.test.ts      表字段、分页行，以及操作是否挂在对应的表上
 ```
 
 字体和 graphql-js 随构建打包，没有外部字体 CDN 请求。使用本地开发服务器或静态 HTTP 服务器运行，不要直接双击 dist/index.html。
