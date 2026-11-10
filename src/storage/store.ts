@@ -64,7 +64,7 @@ export function defaultWorkspace(): AppData {
     draft: initialQuery,
     call: initialCall,
     history: [],
-    sidebar: 256,
+    sidebar: 300,
     editorHeight: 43,
   };
 }
