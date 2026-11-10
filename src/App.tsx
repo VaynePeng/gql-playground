@@ -48,6 +48,7 @@ import type {
   Catalog,
   Execution,
   HistoryItem,
+  PracticeData,
   SchemaNode,
   StoreStats,
 } from "./types";
@@ -117,6 +118,7 @@ export function App() {
     orders: 0,
     items: 0,
   });
+  const [practice, setPractice] = useState<PracticeData>(() => emptyData());
   const [stale, setStale] = useState("");
   const [selected, setSelected] = useState<SchemaNode>();
   const [selection, setSelection] = useState({ text: "", from: 0 });
@@ -153,6 +155,7 @@ export function App() {
   const refresh = useCallback(() => {
     if (!storeRef.current) return;
     setCatalog(readCatalog(schema));
+    setPractice(storeRef.current.snapshot());
     setStats(storeRef.current.stats());
     setStale("");
   }, []);
@@ -191,6 +194,7 @@ export function App() {
             if (disposed) return;
             storeRef.current = new PracticeStore(practice);
             setData(stored);
+            setPractice(storeRef.current.snapshot());
             setStats(storeRef.current.stats());
             setCatalog(readCatalog(schema));
             setReady(true);
@@ -578,13 +582,14 @@ export function App() {
             ref={workspace}
             style={
               {
-                "--sidebar-width": `${data?.sidebar || 256}px`,
+                "--sidebar-width": `${data?.sidebar || 300}px`,
                 "--editor-height": `${data?.editorHeight || 43}%`,
               } as CSSProperties
             }
           >
             <SchemaTree
               catalog={catalog}
+              practice={practice}
               selected={selected}
               onSelect={(node) => {
                 setSelected(node);
@@ -598,7 +603,7 @@ export function App() {
             <div
               className="divider vertical"
               role="separator"
-              aria-label="调整对象栏宽度"
+              aria-label="调整数据栏宽度"
               aria-orientation="vertical"
               tabIndex={0}
               onPointerDown={(event) => resize(event, "sidebar")}
@@ -627,7 +632,7 @@ export function App() {
                   <div className="editor-title">
                     <button
                       className="icon-button mobile-toggle"
-                      aria-label="显示 Schema"
+                      aria-label="显示练习库"
                       onClick={() => setMobileTree(!mobileTree)}
                     >
                       <PanelLeft size={16} />
@@ -912,8 +917,8 @@ export function App() {
                   ) : (
                     <div className="empty-state">
                       <Share2 size={28} />
-                      <h3>从左侧选择一个类型或字段</h3>
-                      <p>查看参数、可空性、说明，并插入练习查询。</p>
+                      <h3>从左侧选择表上的操作或类型</h3>
+                      <p>查看参数、可空性和说明，并插入到编辑器。</p>
                     </div>
                   )
                 ) : (
@@ -1256,6 +1261,9 @@ export function App() {
               ⌘ / Ctrl + Enter 优先执行选区，无选区时执行整个文档。文档含多个
               operation 时，可在下方调用语句里写操作名，或选中其中一个再运行。
               需要参数时，在查询下方写调用，例如 GetCustomer(id: "1")；没有参数时调用区可以留空。
+            </p>
+            <p>
+              左侧是练习库：每张表列出文档字段和当前行。表下面的名称是读写这张表的操作，点进去可以插入示例，再在编辑器里运行。
             </p>
             <h3>结果与保存</h3>
             <p>
