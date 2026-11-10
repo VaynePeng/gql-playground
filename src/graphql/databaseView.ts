@@ -297,6 +297,22 @@ function rowMatches(row: Record<string, unknown>, columns: TableColumn[], term: 
   });
 }
 
+export const PREVIEW_PAGE_SIZE = 50;
+
+export function pageRows<T>(rows: T[], page: number, size = PREVIEW_PAGE_SIZE) {
+  const pages = Math.max(1, Math.ceil(rows.length / size));
+  const current = Math.min(Math.max(0, page), pages - 1);
+  const start = current * size;
+  return {
+    page: current,
+    pages,
+    rows: rows.slice(start, start + size),
+    total: rows.length,
+    from: rows.length ? start + 1 : 0,
+    to: Math.min(rows.length, start + size),
+  };
+}
+
 export function filterDatabaseView(view: DatabaseView, term: string): DatabaseView {
   const query = term.trim().toLowerCase();
   if (!query) return view;

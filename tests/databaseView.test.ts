@@ -6,6 +6,7 @@ import {
   filterDatabaseView,
   formatCell,
   inputEntity,
+  pageRows,
   readCell,
   rowKey,
 } from "../src/graphql/databaseView";
@@ -226,4 +227,26 @@ test("mutations show up in the next database view", () => {
   assert.equal(item?.quantity, 3);
   assert.equal(item?.unitPrice, 89);
   assert.equal("product" in (item ?? {}), false);
+});
+
+test("row preview pages keep document order and exact fields", () => {
+  const rows = describeDatabase(createSeedData(), catalog).tables.find(
+    (item) => item.key === "orders",
+  )!.rows;
+  const first = pageRows(rows, 0, 50);
+  const third = pageRows(rows, 2, 50);
+  const past = pageRows(rows, 99, 50);
+  assert.equal(first.total, 120);
+  assert.equal(first.pages, 3);
+  assert.equal(first.from, 1);
+  assert.equal(first.to, 50);
+  assert.equal(first.rows[0]?.id, 1);
+  assert.equal(first.rows[0]?.customerId, rows[0]?.customerId);
+  assert.equal(third.page, 2);
+  assert.equal(third.from, 101);
+  assert.equal(third.to, 120);
+  assert.equal(third.rows.at(-1)?.id, 120);
+  assert.equal(past.page, 2);
+  assert.equal(pageRows([], 3, 50).rows.length, 0);
+  assert.equal(pageRows([], 3, 50).from, 0);
 });

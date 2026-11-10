@@ -399,6 +399,16 @@ kbd {
 .schema-row {
   font-weight: 600;
 }
+.schema-row.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.schema-row:hover:not(:disabled) {
+  background: var(--hover);
+}
+.schema-row.active:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
 .schema-row small,
 .kind-row small {
   font-size: 9px;
@@ -571,75 +581,6 @@ kbd {
   color: var(--accent);
   border-color: transparent;
 }
-.db-grid-scroll {
-  overflow: auto;
-  max-height: 188px;
-  margin: 0 0 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
-  scrollbar-gutter: stable;
-}
-.db-grid {
-  display: grid;
-  grid-template-columns: var(--db-template);
-  width: 100%;
-  min-width: 0;
-}
-.db-grid-row {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-}
-.db-grid-head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--sidebar);
-  border-bottom: 1px solid var(--line);
-}
-.db-grid-row > * {
-  padding: 3px 6px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-}
-button.db-grid-row {
-  width: auto;
-  border: 0;
-  border-radius: 0;
-  gap: 0;
-  min-height: 24px;
-  padding: 0;
-  justify-content: stretch;
-  background: var(--panel);
-  color: var(--text);
-  font-size: 10.5px;
-  font-weight: 500;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-button.db-grid-row:hover:not(:disabled) {
-  background: var(--hover);
-  border-color: transparent;
-}
-button.db-grid-row.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.db-grid-row > :first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: inherit;
-}
-.db-grid-head > :first-child {
-  z-index: 3;
-  background: var(--sidebar);
-}
 .db-col-name,
 button.db-col-name {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -653,7 +594,7 @@ button.db-col-name {
   border-radius: 0;
   background: transparent;
   min-height: 0;
-  padding: 3px 6px;
+  padding: 0;
   justify-content: flex-start;
 }
 button.db-col-name:hover:not(:disabled),
@@ -661,37 +602,92 @@ button.db-col-name.active {
   color: var(--accent);
   background: transparent;
 }
-.db-record {
+.data-preview {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin: 0 0 8px 8px;
-  padding: 7px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+}
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.preview-toolbar strong {
+  font-weight: 650;
+}
+.preview-toolbar code {
+  font-size: 11px;
+  color: var(--muted);
+}
+.preview-toolbar > span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.preview-pager {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--secondary);
+  font-variant-numeric: tabular-nums;
+}
+.data-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.preview-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.preview-table th,
+.preview-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: var(--panel);
-  font-size: 10px;
-}
-.db-record div {
-  display: grid;
-  grid-template-columns: 5.8rem minmax(0, 1fr);
-  gap: 8px;
-  align-items: baseline;
-}
-.db-record dt {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--muted);
 }
-.db-record dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-  min-width: 0;
+.preview-table .row-number {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 3rem;
+  color: var(--muted);
+  background: var(--panel);
+  text-align: right;
 }
-.db-missing,
-.db-null {
+.preview-table th.row-number {
+  z-index: 2;
+}
+.preview-table tbody tr:hover td {
+  background: var(--hover);
+}
+.preview-missing,
+.preview-null {
   color: var(--muted);
 }
-.db-null {
+.preview-null {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-style: italic;
 }

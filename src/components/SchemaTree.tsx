@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import {
   Search,
   RefreshCw,
@@ -15,11 +15,7 @@ import {
 } from "lucide-react";
 import type { Catalog, PracticeData, SchemaKind, SchemaNode, TypeInfo } from "../types";
 import {
-  cellState,
   describeDatabase,
-  filterDatabaseView,
-  formatCell,
-  rowKey,
   type DatabaseTable,
   type TableAction,
   type TableColumn,
@@ -64,27 +60,6 @@ function matches(term: string, type: TypeInfo) {
       field.name.toLowerCase().includes(term) ||
       field.description?.toLowerCase().includes(term),
   );
-}
-
-function cellTitle(column: string, row: Record<string, unknown>) {
-  const state = cellState(row, column);
-  if (state.missing) return `${column}: 无此字段`;
-  if (state.value === null) return `${column}: null`;
-  if (state.value === "") return `${column}: 空字符串`;
-  return `${column}: ${formatCell(state.value)}`;
-}
-
-function CellText({
-  column,
-  row,
-}: {
-  column: string;
-  row: Record<string, unknown>;
-}) {
-  const state = cellState(row, column);
-  if (state.missing) return <span className="db-missing">—</span>;
-  if (state.value === null) return <span className="db-null">null</span>;
-  return <>{formatCell(state.value)}</>;
 }
 
 function ActionChips({
@@ -180,41 +155,32 @@ function ColumnHead({
 function TableBlock({
   table,
   expanded,
-  openRow,
+  active,
   selected,
-  onToggle,
-  onToggleRow,
+  onOpen,
   onSelect,
 }: {
   table: DatabaseTable;
   expanded: boolean;
-  openRow: string | null;
+  active: boolean;
   selected?: SchemaNode;
-  onToggle: () => void;
-  onToggleRow: (key: string) => void;
+  onOpen: () => void;
   onSelect: (node: SchemaNode) => void;
 }) {
-  const preview = table.columns.filter((column) => column.preview);
-  const template = {
-    "--db-template": preview.map((column) => column.width).join(" "),
-  } as CSSProperties;
-  const countLabel =
-    table.rows.length === table.total
-      ? String(table.total)
-      : `${table.rows.length}/${table.total}`;
   return (
     <section className="db-table">
       <button
         type="button"
-        className="schema-row db-table-head"
+        className={`schema-row db-table-head ${active ? "active" : ""}`}
         aria-expanded={expanded}
-        title={`${table.title} ${table.collection} · GraphQL ${table.typeName} · ${table.total} 行`}
-        onClick={onToggle}
+        aria-current={active ? "true" : undefined}
+        title={`${table.title} ${table.collection} · 在下方查看 ${table.total} 行`}
+        onClick={onOpen}
       >
         {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <span className="db-title">{table.title}</span>
         <code className="db-collection">{table.collection}</code>
-        <small>{countLabel}</small>
+        <small>{table.total}</small>
       </button>
       {expanded ? (
         <>
@@ -231,71 +197,6 @@ function TableBlock({
               </span>
             ))}
           </p>
-          {table.rows.length ? (
-            <div className="db-grid-scroll">
-              <div className="db-grid" role="table" style={template}>
-                <div className="db-grid-row db-grid-head" role="row">
-                  {preview.map((column) => (
-                    <span className="db-col-name" key={column.name}>
-                      {column.name}
-                    </span>
-                  ))}
-                </div>
-                {table.rows.map((row, index) => {
-                  const key = `${table.key}:${rowKey(row, index)}`;
-                  const active = openRow === key;
-                  return (
-                    <button
-                      type="button"
-                      role="row"
-                      key={key}
-                      className={`db-grid-row ${active ? "active" : ""}`}
-                      aria-expanded={active}
-                      aria-label={table.columns
-                        .map((column) => cellTitle(column.name, row))
-                        .join("，")}
-                      onClick={() => onToggleRow(key)}
-                    >
-                      {preview.map((column) => (
-                        <span role="cell" key={column.name} title={cellTitle(column.name, row)}>
-                          <CellText column={column.name} row={row} />
-                        </span>
-                      ))}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <p className="db-empty">还没有行</p>
-          )}
-          {openRow?.startsWith(`${table.key}:`)
-            ? table.rows.map((row, index) => {
-                const key = `${table.key}:${rowKey(row, index)}`;
-                if (key !== openRow) return null;
-                return (
-                  <dl className="db-record" key={key}>
-                    {table.columns.map((column) => {
-                      const state = cellState(row, column.name);
-                      return (
-                        <div key={column.name}>
-                          <dt>{column.name}</dt>
-                          <dd>
-                            {state.missing ? (
-                              <span className="db-missing">缺失</span>
-                            ) : state.value === null ? (
-                              <span className="db-null">null</span>
-                            ) : (
-                              formatCell(state.value)
-                            )}
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                );
-              })
-            : null}
           <ActionChips actions={table.actions} selected={selected} onSelect={onSelect} />
         </>
       ) : null}
@@ -303,10 +204,26 @@ function TableBlock({
   );
 }
 
+function objectMatches(table: DatabaseTable, term: string) {
+  if (!term) return true;
+  const haystack = [
+    table.title,
+    table.collection,
+    table.typeName,
+    ...table.columns.map((column) => column.name),
+    ...table.actions.map((action) => `${action.label} ${action.fieldName}`),
+  ]
+    .join("\n")
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
 export function SchemaTree({
   catalog,
   practice,
+  activeTable,
   selected,
+  onOpenTable,
   onSelect,
   onRefresh,
   stats,
@@ -314,7 +231,9 @@ export function SchemaTree({
 }: {
   catalog: Catalog;
   practice: PracticeData;
+  activeTable: string;
   selected?: SchemaNode;
+  onOpenTable: (key: DatabaseTable["key"]) => void;
   onSelect: (node: SchemaNode) => void;
   onRefresh: () => void;
   stats: { customers: number; products: number; orders: number; items: number };
@@ -322,18 +241,24 @@ export function SchemaTree({
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({ customers: true });
-  const [openRow, setOpenRow] = useState<string | null>(null);
   const term = search.toLowerCase().trim();
   const full = useMemo(() => describeDatabase(practice, catalog), [practice, catalog]);
-  const view = useMemo(() => filterDatabaseView(full, term), [full, term]);
+  const tables = full.tables.filter((table) => objectMatches(table, term));
+  const other = term
+    ? full.other.filter(
+        (action) =>
+          action.label.toLowerCase().includes(term) ||
+          action.fieldName.toLowerCase().includes(term) ||
+          (action.description?.toLowerCase().includes(term) ?? false),
+      )
+    : full.other;
   const toggle = (key: string) =>
     setOpen((current) => ({ ...current, [key]: !current[key] }));
   const typeList = catalog.types.filter((type) => matches(term, type));
   const showTypes = !term || typeList.length > 0;
-  const showOther = !term || view.other.length > 0;
+  const showOther = !term || other.length > 0;
   const emptyLibrary = full.tables.every((table) => table.total === 0);
-  const nothing =
-    term && !view.tables.length && !view.other.length && !typeList.length;
+  const nothing = term && !tables.length && !other.length && !typeList.length;
 
   return (
     <aside className="object-tree">
@@ -354,8 +279,8 @@ export function SchemaTree({
       <label className="search-box">
         <Search size={14} />
         <input
-          aria-label="搜索表、字段或行"
-          placeholder="搜索表、字段或行…"
+          aria-label="搜索表、字段或操作"
+          placeholder="搜索表、字段或操作…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -366,15 +291,17 @@ export function SchemaTree({
             练习库是空的。打开「练习手册」载入示例，或用写入操作添加数据。
           </p>
         ) : null}
-        {view.tables.map((table) => (
+        {tables.map((table) => (
           <TableBlock
             key={table.key}
             table={table}
             expanded={Boolean(term) || Boolean(open[table.key])}
-            openRow={openRow}
+            active={activeTable === table.key}
             selected={selected}
-            onToggle={() => toggle(table.key)}
-            onToggleRow={(key) => setOpenRow((current) => (current === key ? null : key))}
+            onOpen={() => {
+              onOpenTable(table.key);
+              if (activeTable === table.key || !open[table.key]) toggle(table.key);
+            }}
             onSelect={onSelect}
           />
         ))}
@@ -392,12 +319,12 @@ export function SchemaTree({
                 <ChevronRight size={13} />
               )}
               <span>其他操作</span>
-              <small>{view.other.length}</small>
+                <small>{other.length}</small>
             </button>
             {Boolean(term) || open.other ? (
               <>
                 <p className="db-hint">不直接对应一张表，仍可在编辑器里调用。</p>
-                <ActionChips actions={view.other} selected={selected} onSelect={onSelect} />
+                <ActionChips actions={other} selected={selected} onSelect={onSelect} />
               </>
             ) : null}
           </section>
@@ -501,7 +428,7 @@ export function SchemaTree({
               : null}
           </section>
         ) : null}
-        {nothing ? <p className="tree-empty">没有匹配的表、字段或行</p> : null}
+        {nothing ? <p className="tree-empty">没有匹配的表或字段</p> : null}
       </div>
       <div className="tree-bottom">
         {stale ? <p className="stale">{stale}</p> : null}
@@ -509,7 +436,7 @@ export function SchemaTree({
           {stats.customers} 位客户 · {stats.products} 件商品 · {stats.orders} 笔订单 ·{" "}
           {stats.items} 条明细
         </p>
-        <p>先看表和当前行，再用编辑器调用上面的操作</p>
+        <p>点一张表，在下方查看当前行</p>
       </div>
     </aside>
   );
