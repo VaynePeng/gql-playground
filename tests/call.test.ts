@@ -250,5 +250,6 @@ test("old stored variables JSON is ignored without dropping the draft", () => {
   assert.equal(restored.editorHeight, 40);
   assert.equal("variables" in restored, false);
   assert.equal("variablesOpen" in restored, false);
-  assert.equal(migrateWorkspace({ editorHeight: 43 }).editorHeight, 56);
+  assert.equal(migrateWorkspace({ editorHeight: 56 }).editorHeight, 43);
+  assert.equal(migrateWorkspace({ editorHeight: 43 }).editorHeight, 43);
 });

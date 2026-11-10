@@ -35,7 +35,7 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 4. 每张表下面是读写它的操作，例如客户表上的 `customer`、`customers`、`createCustomer`。点操作可查看参数，并用「插入示例」放进编辑器。这些操作来自表，左侧不再用 Query / Mutation 当目录。不直接对应单张表的 `hello`、`stats`、`search` 收在表后面。类型、枚举和输入默认折叠在底部。
 5. 写入练习库后，左侧的行和计数会跟着变。搜索可以按表名、字段或单元格过滤。
 6. 结果是格式化 JSON。点击值可展开全文并复制。文档里有多个 operation 时，可在下方调用其中一个，或选中其中一个再运行。
-7. 上方写 GraphQL 操作定义，下方写调用语句传入参数，例如 `GetCustomer(id: "1")`。没有参数时调用区可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
+7. 上方写 GraphQL 操作定义；编辑器卡片底部的调用条传入参数，例如 `GetCustomer(id: "1")`。没有参数时可留空。草稿和调用会一起保存；历史保存最近 200 次执行，点击可恢复，不自动运行。支持 `.graphql` 导入导出操作定义。
 8. 右上角切换**浅色 / 深色 / 跟随系统**。蓝灰配色覆盖编辑器、选区、结果和弹窗；选择会记住。
 
 ## 错误
@@ -71,7 +71,7 @@ npm run preview # 生产构建预览 http://127.0.0.1:4173/
 ```text
 src/App.tsx                     工作台、运行、持久化与库切换
 src/components/GqlEditor.tsx    CodeMirror GraphQL、选区与主题
-src/components/CallEditor.tsx   操作调用语句编辑器
+src/components/CallEditor.tsx   编辑器底部的调用条
 src/components/SchemaTree.tsx   左侧练习库：表、当前行，以及来自这些表的操作
 src/components/SchemaDetail.tsx 字段参数、可空性与示例插入
 src/components/ResultView.tsx   JSON 结果树、展开与复制
